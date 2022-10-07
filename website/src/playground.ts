@@ -41,12 +41,39 @@ function *Timer() {
 renderer.render(xm\`<\${Timer} />\`, document.body);
 `.trimLeft();
 
+import {ConvexReactClient} from "convex/react";
 function* Playground(this: Context, {}) {
-	let value = localStorage.getItem("playground-value") || EXAMPLE;
-	this.addEventListener("contentchange", (ev: any) => {
-		value = ev.target.value;
+	const address = "https://keen-gnat-970.convex.cloud";
+	const client = new ConvexReactClient({address});
+	const watch = client.watchQuery("getPlayground");
+	const updatePlayground = client.mutation("updatePlayground");
+	let value = watch.localQueryResult() || "\n";
 
-		localStorage.setItem("playground-value", value);
+	let isConvexing = false;
+
+	let renderSource = null;
+	watch.onUpdate(() => {
+		value = watch.localQueryResult();
+		console.log(["onUpdate called", value]);
+		isConvexing = true;
+		renderSource = "convex";
+		this.refresh();
+	});
+
+	this.addEventListener("contentchange", (ev: any) => {
+		console.log(ev.detail);
+		if (ev.detail.source === "convex") {
+			return;
+		}
+
+		renderSource = null;
+		value = ev.target.value;
+		isConvexing = false;
+		if (value !== "" && value !== "\n") {
+			console.log(["updatePlayground", value]);
+			updatePlayground(value);
+		}
+
 		this.refresh();
 	});
 
@@ -62,7 +89,7 @@ function* Playground(this: Context, {}) {
 		//this.flush(() => {
 		//	window.location.hash = LZString.compressToEncodedURIComponent(value);
 		//});
-
+		console.log("rendering", renderSource, value, isConvexing);
 		yield xm`
 			<div
 				style="
@@ -76,8 +103,8 @@ function* Playground(this: Context, {}) {
 			>
 				<div style="width: 50%; height: 100%; border-right: 1px solid white">
 					<${CodeEditor}
-						$static
 						value=${value}
+						renderSource=${renderSource}
 						language="typescript"
 						showGutter
 					/>

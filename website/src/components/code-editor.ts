@@ -103,25 +103,27 @@ export function* CodeEditor(
 		language,
 		editable,
 		showGutter,
+		renderSource,
 	}: {
 		value: string;
 		language: string;
 		editable?: boolean;
 		showGutter?: boolean;
+		renderSource: string | null;
 	},
 ) {
 	const keyer = new Keyer();
 	let editHistory = new EditHistory();
 	let selectionRange: SelectionRange | undefined;
-	let renderSource: string | undefined;
 	let area!: ContentAreaElement;
+	let localRenderSource: string | null = null;
 	this.addEventListener("contentchange", (ev: any) => {
 		if (ev.detail.source != null) {
 			return;
 		}
 
 		value = ev.target.value;
-		renderSource = "refresh";
+		localRenderSource = "refresh";
 		this.refresh();
 	});
 
@@ -140,7 +142,7 @@ export function* CodeEditor(
 			if (edit) {
 				value = edit.apply(value);
 				selectionRange = selectionRangeFromEdit(edit);
-				renderSource = "history";
+				localRenderSource = "history";
 				this.refresh();
 				return true;
 			}
@@ -153,7 +155,7 @@ export function* CodeEditor(
 			if (edit) {
 				value = edit.apply(value);
 				selectionRange = selectionRangeFromEdit(edit);
-				renderSource = "history";
+				localRenderSource = "history";
 				this.refresh();
 				return true;
 			}
@@ -241,7 +243,7 @@ export function* CodeEditor(
 					.retain(selectionStart)
 					.insert(insert)
 					.build();
-				renderSource = "newline";
+				localRenderSource = "newline";
 				value = edit.apply(value);
 				selectionRange = {
 					selectionStart: selectionStart + insert.length,
@@ -257,13 +259,21 @@ export function* CodeEditor(
 	}
 
 	let value1: string;
-	for ({value: value1, language, editable = true, showGutter} of this) {
+	for ({
+		value: value1,
+		language,
+		editable = true,
+		showGutter,
+		renderSource = localRenderSource,
+	} of this) {
+		console.log(["rendering code editor", value1, value, renderSource]);
 		this.schedule(() => {
 			selectionRange = undefined;
-			renderSource = undefined;
+			renderSource = null;
+			localRenderSource = null;
 		});
 
-		if (renderSource == null) {
+		if (renderSource === "convex") {
 			value = value1;
 		}
 
